@@ -1,0 +1,278 @@
+    <div class="container body-margin">
+      <div class="row">
+        <div class="col-md-8">
+          <h1>spoker-master</h1>
+        </div>
+        <div class="col-md-4 right">
+          <% if @user %>
+          <% if @user.moderator %>
+          <form action="<%= room_url(@room) %>" method="post">
+            <%= hidden_field_tag :_method, "delete" %>
+            <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+            <button type="submit" class="btn btn-sm btn-danger">Close Room</button>
+          </form>
+          <% else %>
+          <form action="<%= user_url(@user) %>" method="post">
+            <%= hidden_field_tag :_method, "delete" %>
+            <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+            <button type="submit" class="btn btn-sm btn-danger">Leave Room</button>
+          </form>
+          <% end %>
+          <% end %>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <h1>
+            <span class="label label-primary">
+              <%= @room.name %>
+            </span>
+          </h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Estimated Stories</h3>
+            </div>
+            <div class="panel-body">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Story</th>
+                    <th>Estimate</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="estimated-stories">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Estimate for Current Story</h3>
+            </div>
+            <div class="panel-body">
+              <h2 class="story-name">
+                <% if @user and @user.moderator? %> <!-- TODO test case split -->
+                <span id="story-name" class="label label-default" onclick="edit_value('story-name');"><%= @room.story_name %></span>
+                <% else %>
+                <span id="story-name" class="label label-default"><%= @room.story_name %></span>
+                <% end %>
+              </h2>
+              <h2 class="estimate">
+                <% if @user and @user.moderator? %>
+                <span id="estimate" class="label label-success" onclick="edit_value('estimate');"><%= @room.pretty_estimate %></span>
+                <% else %>
+                <span id="estimate" class="label label-success"><%= @room.pretty_estimate %></span>
+                <% end %>
+              </h2>
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>User</th>
+                    <th>Estimate</th>
+                  </tr>
+                </thead>
+                <tbody id="votes">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <% if @user == nil %> <!-- TODO test case split -->
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Join Room</h3>
+            </div>
+            <div class="panel-body center">
+              <form action="<%= users_url %>" method="post">
+                <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                <%= hidden_field_tag 'user[room_id]', @room.id %>
+                <h3>
+                  <span class="label label-primary">
+                    Write your name.
+                  </span>
+                </h3>
+                <p>
+                  <%= text_field :user, :name %>
+                </p>
+                <button type="submit" class="btn btn-lg btn-success">Join Room</button>
+              </form>
+            </div>
+          </div>
+          <% else %>
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Your Estimate</h3>
+            </div>
+            <div class="panel-body">
+              <div class="list_group">
+                <% Estimate.estimates_for_cards.each do |e| %>
+                  <% c = e.second == "coffee" ? "scrum-card-long" : "scrum-card" %>
+                  <button type="button" class="btn btn-lg btn-success <%= c %>" onclick="vote(<%= e.first %>);"><h4><%= e.second %></h4></button>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <% end %>
+        </div>
+      </div>
+      <% if @user and @user.moderator? %> <!-- TODO test case split -->
+      <div class="row">
+        <div class="col-md-12">
+          <div class="panel panel-danger">
+            <div class="panel-heading">
+              <h3 class="panel-title">You are moderator, use these with care.</h3>
+            </div>
+            <div class="panel-body center">
+              <button type="button" class="btn btn-lg btn-danger" onclick="show_votes();">Show Votes</button>
+              <button type="button" class="btn btn-lg btn-danger" onclick="clear_votes();">Clear Votes</button>
+              <button type="button" class="btn btn-lg btn-danger" onclick="close_voting();">Close Voting</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% end %>
+    </div>
+    <script language="javascript">
+      var getWorkers = new Array();
+
+      function getWorker(controller, task) {
+        var currentETag = "";
+        var h = window.setInterval(function() {
+          var req = new XMLHttpRequest();
+          req.onreadystatechange = function() {
+            if(req.readyState != 4) return;
+            if(req.status == 404) {
+              for(v of getWorkers)
+                window.clearInterval(v);
+              window.location.href = "<%= root_url %>";
+              return;
+            }
+            if(req.status != 200) return;
+            currentETag = req.getResponseHeader("ETag");
+            task(req);
+          }
+          req.open("GET", "<%= room_url(@room) %>/" + controller, true);
+          req.setRequestHeader("If-None-Match", currentETag);
+          req.send();
+        }, 200);
+        getWorkers.push(h);
+        return h;
+      };
+
+      function updateStringWorker(controller, id, key) {
+        return getWorker(controller, function(req) {
+          e = document.getElementById(id);
+          j = JSON.parse(req.responseText);
+          e.innerHTML = j[key];
+        });
+      };
+
+      updateStringWorker("story-name", "story-name", "story_name");
+      updateStringWorker("estimate", "estimate", "estimate");
+
+      getWorker("votes", function(req) {
+        e = document.getElementById("votes");
+        j = JSON.parse(req.responseText);
+        t = "";
+        for(v of j["votes"]) {
+          t = t + "<tr><td>" + v["moderator"] + "</td><td>" + v["name"] + "</td><td>" + v["vote"] + "<td></td></tr>"
+        }
+        e.innerHTML = t;
+      });
+
+      getWorker("estimated-stories", function(req) {
+        e = document.getElementById("estimated-stories");
+        j = JSON.parse(req.responseText);
+        t = "";
+        for(v of j["estimated_stories"]) {
+          <% if @user and @user.moderator? %>
+          t = t + "<tr><td>" + v["name"] + "</td><td>" + v["estimate"] + "</td><td><a class=\"hand\" onclick=\"delete_story('" + v["uri"] + "');\">X</a></td></tr>";
+          <% else %>
+          t = t + "<tr><td>" + v["name"] + "</td><td>" + v["estimate"] + "</td><td></td></tr>";
+          <% end %>
+
+        }
+        e.innerHTML = t;
+      });
+
+      <% if @user %>
+
+      function request_w_json(method, uri, j) {
+        j["authenticity_token"] = "<%= form_authenticity_token %>";
+        var req = new XMLHttpRequest();
+        req.open(method, uri, true);
+        req.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+        req.send(JSON.stringify(j));
+      };
+
+      function vote(v) {
+        var j = { user: { vote: v } };
+        request_w_json("PATCH", "<%= user_url(@user) %>", j);
+      };
+
+      <% if @user.moderator? %>
+      function show_votes() {
+        request_w_json("POST", "<%= room_url(@room) %>/show-votes", {});
+      }
+
+      function clear_votes() {
+        request_w_json("POST", "<%= room_url(@room) %>/clear-votes", {});
+      }
+
+      function close_voting() {
+        request_w_json("POST", "<%= room_url(@room) %>/close-voting", {});
+      }
+
+      function delete_story(uri) {
+        request_w_json("DELETE", uri, {});
+      }
+
+      function keydown_edit_value(id) {
+        return function(e) {
+          if(e.keyCode != 13) return;
+          var l = document.getElementById(id);
+          var t = document.getElementById("edit-" + id);
+          try {
+            t.parentElement.removeChild(t);
+          } catch(e) {}
+          l.style.display = "inline";
+          var j = new Object();
+          j[id.replace("-", "_")] = t.value;
+          request_w_json("PATCH", "<%= room_url(@room) %>", j);
+        }
+      }
+
+      function blur_edit_value(id) {
+        return function() {
+          var l = document.getElementById(id);
+          var t = document.getElementById("edit-" + id);
+          t.parentElement.removeChild(t);
+          l.style.display = "inline";
+        }
+      }
+
+      function edit_value(id) {
+        var e = document.getElementById(id);
+        var t = document.createElement("input");
+        t.id = "edit-" + id;
+        t.value = e.innerHTML;
+        t.addEventListener("keydown", keydown_edit_value(id));
+        t.addEventListener("blur", blur_edit_value(id), false);
+        e.style.display = "none";
+        e.parentElement.appendChild(t);
+        t.focus();
+      }
+
+      <% end %>
+
+      <% end %>
+    </script>

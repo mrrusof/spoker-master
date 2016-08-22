@@ -1,0 +1,40 @@
+    <div class="container body-margin">
+      <div class="row">
+        <div class="col-md-8">
+          <h1>spoker-master</h1>
+        </div>
+        <div class="col-md-4 right">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <div class="panel panel-primary">
+            <div class="panel-heading">
+              <h3 class="panel-title">Create Room</h3>
+            </div>
+            <div class="panel-body center">
+              <form action="<%= rooms_create_url %>" method="post">
+                <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                <h3>
+                  <span class="label label-primary">
+                    Write a name for your room.
+                  </span>
+                </h3>
+                <p>
+                  <%= text_field :room, :name %>
+                </p>
+                <h3>
+                  <span class="label label-primary">
+                    Write your name.
+                  </span>
+                </h3>
+                <p>
+                  <%= text_field :moderator, :name %>
+                </p>
+                <button type="submit" class="btn btn-lg btn-success">Create Room</input>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
