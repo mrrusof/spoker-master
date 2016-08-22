@@ -1,7 +1,16 @@
     <div class="container body-margin">
       <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-12">
           <h1>spoker-master</h1>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-8">
+          <h1>
+            <span class="label label-primary">
+              <%= @room.name %>
+            </span>
+          </h1>
         </div>
         <div class="col-md-4 right">
           <% if @user %>
@@ -19,15 +28,6 @@
           </form>
           <% end %>
           <% end %>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-md-12">
-          <h1>
-            <span class="label label-primary">
-              <%= @room.name %>
-            </span>
-          </h1>
         </div>
       </div>
       <div class="row">
