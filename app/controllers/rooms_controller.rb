@@ -1,5 +1,7 @@
 class RoomsController < ApplicationController
   DEFAULT_STORY_NAME = 'New Story'
+  LONG_POLLING_TIMEOUT_SECS = 45
+  LONG_POLLING_SLEEP_SECS = 1
 
   # TODO set_* tighten if not already tight
   before_action :set_room, except: [:new, :create_w_moderator]
@@ -112,35 +114,43 @@ class RoomsController < ApplicationController
 
   # GET /rooms/1/estimate
   def estimate
-    e = @room.visible_votes? ? @room.pretty_estimate : 'waiting'
-    render json: { estimate: e }
+    long_polling_for_room do
+      e = @room.visible_votes? ? @room.pretty_estimate : 'waiting'
+      { estimate: e }
+    end
   end
 
   # GET /rooms/1/estimated-stories
   def estimated_stories
-    ss = @room.stories.map do |s|
-      { uri: story_url(s), name: s.name, estimate: s.estimate }
+    long_polling_for_room do
+      ss = @room.stories.map do |s|
+        { uri: story_url(s), name: s.name, estimate: s.estimate }
+      end
+      { estimated_stories: ss }
     end
-    render json: { estimated_stories: ss }
   end
 
   # GET /rooms/1/story-name
   def story_name
-    render json: { story_name: @room.story_name }
+    long_polling_for_room do
+      { story_name: @room.story_name }
+    end
   end
 
   # GET /rooms/1/votes
   def votes
-    vs = @room.users.map do |u|
-      if @room.visible_votes?
-        v = u.pretty_vote
-      else
-        v = u.vote ? 'voted' : 'waiting'
+    long_polling_for_room do
+      vs = @room.users.map do |u|
+        if @room.visible_votes?
+          v = u.pretty_vote
+        else
+          v = u.vote ? 'voted' : 'waiting'
+        end
+        m = u.moderator? ? 'M' : ''
+        { name: u.name, vote: v, moderator: m }
       end
-      m = u.moderator? ? 'M' : ''
-      { name: u.name, vote: v, moderator: m }
+      { votes: vs }
     end
-    render json: { votes: vs }
   end
 
   private
@@ -172,6 +182,20 @@ class RoomsController < ApplicationController
         render json: { id: :internal_server_error, description: u.errors }, status: :internal_server_error
       end
     end
+  end
+
+  def long_polling_for_room(&block)
+    stop = Time.now + LONG_POLLING_TIMEOUT_SECS
+    while true
+      j = yield
+      response.etag = j
+      if Time.now >= stop or not request.etag_matches? response.etag
+        break
+      end
+      sleep LONG_POLLING_SLEEP_SECS
+      @room.reload
+    end
+    render json: j
   end
 
 end

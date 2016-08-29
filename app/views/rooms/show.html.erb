@@ -146,20 +146,28 @@
 
       function getWorker(controller, task) {
         var currentETag = "";
-        var h = window.setInterval(function() {
-          var req = new XMLHttpRequest();
-          req.onreadystatechange = function() {
-            if(req.readyState != 4) return;
-            if(req.status == 404) {
-              for(v of getWorkers)
-                window.clearInterval(v);
-              window.location.href = "<%= root_url %>";
-              return;
-            }
-            if(req.status != 200) return;
-            currentETag = req.getResponseHeader("ETag");
-            task(req);
+        var req = new XMLHttpRequest();
+        var go = true;
+        req.onreadystatechange = function() {
+          if(req.readyState != 4) return;
+          if(req.status == 404) {
+            for(v of getWorkers)
+              window.clearInterval(v);
+            window.location.href = "<%= root_url %>";
+            go = true;
+            return;
           }
+          if(req.status != 200) {
+            go = true;
+            return;
+          }
+          currentETag = req.getResponseHeader("ETag");
+          task(req);
+          go = true;
+        }
+        var h = window.setInterval(function() {
+          if(!go) return;
+          go = false;
           req.open("GET", "<%= room_url(@room) %>/" + controller, true);
           req.setRequestHeader("If-None-Match", currentETag);
           req.send();
@@ -199,7 +207,6 @@
           <% else %>
           t = t + "<tr><td>" + v["name"] + "</td><td>" + v["estimate"] + "</td><td></td></tr>";
           <% end %>
-
         }
         e.innerHTML = t;
       });
