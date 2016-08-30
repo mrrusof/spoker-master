@@ -140,7 +140,7 @@ class RoomsController < ApplicationController
   # GET /rooms/1/votes
   def votes
     long_polling_for_room do
-      vs = @room.users.map do |u|
+      vs = @room.users.order(:name).map do |u|
         if @room.visible_votes?
           v = u.pretty_vote
         else
