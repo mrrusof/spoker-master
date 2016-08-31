@@ -152,23 +152,11 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     skip 'wip'
   end
 
-  test 'gives current estimate' do
-    skip 'wip'
-  end
-
-  test 'gives estimated stories' do
-    skip 'wip'
-  end
-
-  test 'gives story name' do
-    skip 'wip'
-  end
-
   test 'sets story name' do
     skip 'wip'
   end
 
-  test 'gives votes' do
+  test 'gives state' do
     skip 'wip'
   end
 

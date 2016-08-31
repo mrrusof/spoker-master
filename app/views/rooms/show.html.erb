@@ -176,39 +176,34 @@
         return h;
       };
 
-      function updateStringWorker(controller, id, key) {
-        return getWorker(controller, function(req) {
-          e = document.getElementById(id);
-          j = JSON.parse(req.responseText);
-          e.innerHTML = j[key];
-        });
-      };
+      function setInnerHTML(id, v) { document.getElementById(id).innerHTML = v; }
 
-      updateStringWorker("story-name", "story-name", "story_name");
-      updateStringWorker("estimate", "estimate", "estimate");
-
-      getWorker("votes", function(req) {
-        e = document.getElementById("votes");
-        j = JSON.parse(req.responseText);
+      function votes(s) {
         t = "";
-        for(v of j["votes"]) {
+        for(v of s["votes"]) {
           t = t + "<tr><td>" + v["moderator"] + "</td><td>" + v["name"] + "</td><td>" + v["vote"] + "<td></td></tr>"
         }
-        e.innerHTML = t;
-      });
+        return t;
+      }
 
-      getWorker("estimated-stories", function(req) {
-        e = document.getElementById("estimated-stories");
-        j = JSON.parse(req.responseText);
+      function estimatedStories(s) {
         t = "";
-        for(v of j["estimated_stories"]) {
+        for(v of s["estimated-stories"]) {
           <% if @user and @user.moderator? %>
           t = t + "<tr><td>" + v["name"] + "</td><td>" + v["estimate"] + "</td><td><a class=\"hand\" onclick=\"delete_story('" + v["uri"] + "');\">X</a></td></tr>";
           <% else %>
           t = t + "<tr><td>" + v["name"] + "</td><td>" + v["estimate"] + "</td><td></td></tr>";
           <% end %>
         }
-        e.innerHTML = t;
+        return t;
+      }
+
+      getWorker("state", function(req) {
+        s = JSON.parse(req.responseText);
+        setInnerHTML("story-name", s["story-name"]);
+        setInnerHTML("estimate", s["estimate"]);
+        setInnerHTML("votes", votes(s));
+        setInnerHTML("estimated-stories", estimatedStories(s));
       });
 
       <% if @user %>
@@ -227,6 +222,7 @@
       };
 
       <% if @user.moderator? %>
+
       function show_votes() {
         request_w_json("POST", "<%= room_url(@room) %>/show-votes", {});
       }

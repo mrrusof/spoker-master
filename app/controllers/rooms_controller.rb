@@ -1,7 +1,7 @@
 class RoomsController < ApplicationController
   DEFAULT_STORY_NAME = 'New Story'
-  LONG_POLLING_TIMEOUT_SECS = 45
-  LONG_POLLING_SLEEP_SECS = 1
+  LONG_POLLING_TIMEOUT_SECS = (ENV['POLL_TIMEOUT'] || 45).to_f
+  LONG_POLLING_SLEEP_SECS = (ENV['POLL_SLEEP'] || 0.5).to_f
 
   # TODO set_* tighten if not already tight
   before_action :set_room, except: [:new, :create_w_moderator]
@@ -112,44 +112,13 @@ class RoomsController < ApplicationController
     end
   end
 
-  # GET /rooms/1/estimate
-  def estimate
-    long_polling_for_room do
-      e = @room.visible_votes? ? @room.pretty_estimate : 'waiting'
-      { estimate: e }
-    end
-  end
-
-  # GET /rooms/1/estimated-stories
-  def estimated_stories
-    long_polling_for_room do
-      ss = @room.stories.map do |s|
-        { uri: story_url(s), name: s.name, estimate: s.estimate }
-      end
-      { estimated_stories: ss }
-    end
-  end
-
-  # GET /rooms/1/story-name
-  def story_name
-    long_polling_for_room do
-      { story_name: @room.story_name }
-    end
-  end
-
-  # GET /rooms/1/votes
-  def votes
-    long_polling_for_room do
-      vs = @room.users.order(:name).map do |u|
-        if @room.visible_votes?
-          v = u.pretty_vote
-        else
-          v = u.vote ? 'voted' : 'waiting'
-        end
-        m = u.moderator? ? 'M' : ''
-        { name: u.name, vote: v, moderator: m }
-      end
-      { votes: vs }
+  # GET /rooms/1/state
+  def state
+    long_polling do
+      { 'story-name': story_name,
+        estimate: estimate,
+        'estimated-stories': estimated_stories,
+        votes: votes }
     end
   end
 
@@ -184,7 +153,33 @@ class RoomsController < ApplicationController
     end
   end
 
-  def long_polling_for_room(&block)
+  def estimate
+    @room.visible_votes? ? @room.pretty_estimate : 'waiting'
+  end
+
+  def story_name
+    @room.story_name
+  end
+
+  def estimated_stories
+    @room.stories.map do |s|
+      { uri: story_url(s), name: s.name, estimate: s.estimate }
+    end
+  end
+
+  def votes
+    @room.users.order(:name).map do |u|
+      if @room.visible_votes?
+        v = u.pretty_vote
+      else
+        v = u.vote ? 'voted' : 'waiting'
+      end
+      m = u.moderator? ? 'M' : ''
+      { name: u.name, vote: v, moderator: m }
+    end
+  end
+
+  def long_polling
     stop = Time.now + LONG_POLLING_TIMEOUT_SECS
     while true
       j = yield
@@ -195,7 +190,11 @@ class RoomsController < ApplicationController
       sleep LONG_POLLING_SLEEP_SECS
       @room.reload
     end
-    render json: j
+    if request.etag_matches? response.etag
+      head :not_modified
+    else
+      render json: j
+    end
   end
 
 end
