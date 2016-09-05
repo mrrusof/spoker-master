@@ -1,10 +1,14 @@
+$poll_at = Concurrent::Map.new
+$current = Concurrent::Map.new
+$rooms_lock = Mutex.new
+
 class RoomsController < ApplicationController
   DEFAULT_STORY_NAME = 'New Story'
   LONG_POLLING_TIMEOUT_SECS = (ENV['POLL_TIMEOUT'] || 45).to_f
   LONG_POLLING_SLEEP_SECS = (ENV['POLL_SLEEP'] || 0.5).to_f
 
   # TODO set_* tighten if not already tight
-  before_action :set_room, except: [:new, :create_w_moderator]
+  before_action :set_room, except: [:new, :create_w_moderator, :state]
   before_action :set_user, only: [:show, :show_votes, :clear_votes, :close_voting]
 
   # GET /
@@ -114,11 +118,28 @@ class RoomsController < ApplicationController
 
   # GET /rooms/1/state
   def state
+#    byebug if ActiveRecord::Base.connection_pool.connections.size > 1
     long_polling do
-      { 'story-name': story_name,
-        estimate: estimate,
-        'estimated-stories': estimated_stories,
-        votes: votes }
+      damp do
+        begin
+          puts "#{Time.now.to_i} #{Thread.current}: poll json"
+#          byebug if ActiveRecord::Base.connection_pool.active_connection?
+          byebug
+          set_room
+          puts "#{Time.now.to_i} #{Thread.current}: @room #{@room}"
+          puts "#{Time.now.to_i} #{Thread.current}: active connections #{ActiveRecord::Base.connection_pool.active_connection?}"
+          j = { 'story-name': story_name,
+                estimate: estimate,
+                'estimated-stories': estimated_stories,
+                votes: votes }
+        ensure
+          @room = nil
+          ActiveRecord::Base.clear_active_connections!
+        end
+        puts "#{Time.now.to_i} #{Thread.current}: active connections #{ActiveRecord::Base.connection_pool.active_connection?}"
+        puts "#{Time.now.to_i} #{Thread.current}: open connections #{ActiveRecord::Base.connection_pool.connections.size}"
+        j
+      end
     end
   end
 
@@ -184,17 +205,36 @@ class RoomsController < ApplicationController
     while true
       j = yield
       response.etag = j
-      if Time.now >= stop or not request.etag_matches? response.etag
+      if stop < Time.now or not request.etag_matches? response.etag
         break
       end
       sleep LONG_POLLING_SLEEP_SECS
-      @room.reload
     end
+    puts "#{Time.now.to_i} #{Thread.current}: json = #{j}"
     if request.etag_matches? response.etag
       head :not_modified
     else
       render json: j
     end
+  end
+
+  def damp
+    id = params[:id]
+    j = nil
+    synchronize do
+      $poll_at[id] ||= Time.at(0)
+      if $poll_at[id] < Time.now
+        $current[id] = yield
+        $poll_at[id] = Time.now + LONG_POLLING_SLEEP_SECS
+      end
+      puts "#{Time.now.to_i} #{Thread.current}: copy json"
+      j = $current[id]
+    end
+    return j
+  end
+
+  def synchronize(&block)
+    $rooms_lock.synchronize(&block)
   end
 
 end
