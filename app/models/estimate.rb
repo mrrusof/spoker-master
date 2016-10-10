@@ -1,7 +1,7 @@
 class Estimate
 
-  USER_ESTIMATES = [1,2,3,5,8,13,20,40,100,110,120]
-  VALID_ESTIMATES = [1,2,3,5,8,13,20,40,100,110,120,nil]
+  USER_ESTIMATES = [1,2,3,5,8,13,21,34,55,89,110,120]
+  VALID_ESTIMATES = [1,2,3,5,8,13,21,34,55,89,110,120,nil]
   ESTIMATES_TO_PRETTY = { 110 => '?', 120 => 'coffee', nil => '' }
 
   class << self
