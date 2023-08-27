@@ -68,7 +68,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test 'renders error when created moderator cannot be saved' do
     @mock = unsavable_mock 'moderator'
-    @mock.expect :room_id=, nil, [Fixnum]
+    @mock.expect :room_id=, nil, [Integer]
     @mock.expect :moderator=, nil, [true]
     User.stub :new, @mock do
     assert_no_difference('User.count') do
