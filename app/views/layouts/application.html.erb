@@ -52,6 +52,7 @@
       }
     </style>
 
+    <% if Rails.env == 'production' %>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-RWR8ZC0K5J"></script>
     <script>
@@ -61,6 +62,7 @@
 
       gtag('config', 'G-RWR8ZC0K5J');
     </script>
+    <% end %>
   </head>
 
   <body>
