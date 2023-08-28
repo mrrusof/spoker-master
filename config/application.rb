@@ -9,7 +9,7 @@ require "rails"
   'active_record/railtie',
 #  'active_storage/engine',
   'action_controller/railtie',
-  'paction_view/railtie',
+  'action_view/railtie',
 #  'action_mailer/railtie',
 #  'active_job/railtie',
 #  'action_cable/engine',
