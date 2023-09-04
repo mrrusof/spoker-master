@@ -1,5 +1,5 @@
 class RoomsController < ApplicationController
-  DEFAULT_STORY_NAME = 'New Story'
+  DEFAULT_STORY_NAME = 'New Story (click to change)'
   LONG_POLLING_TIMEOUT_SECS = (ENV['POLL_TIMEOUT'] || 45).to_f
   LONG_POLLING_SLEEP_SECS = (ENV['POLL_SLEEP'] || 0.5).to_f
 
