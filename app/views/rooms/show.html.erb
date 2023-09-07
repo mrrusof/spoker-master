@@ -13,6 +13,9 @@
           </h1>
         </div>
         <div class="col-md-4 right">
+          <span class="label label-primary">
+            Share this URL with your team: <%= room_url(@room) %>
+          </span>
           <% if @user %>
           <% if @user.moderator %>
           <form action="<%= room_url(@room) %>" method="post">
