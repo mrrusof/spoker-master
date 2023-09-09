@@ -17,7 +17,7 @@ class RoomsController < ApplicationController
 
   # POST /rooms/create
   def create_w_moderator
-    @room = Room.new(room_params)
+    @room = RoomPresenter.new(Room.new(room_params))
     @room.story_name = DEFAULT_STORY_NAME # TODO move to config file # TODO test
     if @room.save
       @user = User.new(moderator_params)
@@ -125,7 +125,7 @@ class RoomsController < ApplicationController
   private
 
   def set_room
-    @room = Room.find params[:id]
+    @room = RoomPresenter.new Room.find params[:id]
   end
 
   def set_user
@@ -154,7 +154,7 @@ class RoomsController < ApplicationController
   end
 
   def estimate
-    @room.visible_votes? ? @room.pretty_estimate : 'waiting'
+    @room.visible_votes? ? @room.estimate : 'waiting'
   end
 
   def story_name
@@ -162,20 +162,14 @@ class RoomsController < ApplicationController
   end
 
   def estimated_stories
-    @room.stories.map do |s|
+    @room.stories.map { |s| StoryPresenter.new s }.map do |s|
       { uri: story_url(s), name: s.name, estimate: s.estimate }
     end
   end
 
   def votes
-    @room.users.order(:name).map do |u|
-      if @room.visible_votes?
-        v = u.pretty_vote
-      else
-        v = u.vote ? 'voted' : 'waiting'
-      end
-      m = u.moderator? ? 'M' : ''
-      { name: u.name, vote: v, moderator: m }
+    @room.users.order(:name).map { |u| UserPresenter.new u }.map do |u|
+      { name: u.name, vote: u.vote, moderator: u.moderator }
     end
   end
 

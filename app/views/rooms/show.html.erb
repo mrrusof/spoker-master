@@ -69,9 +69,9 @@
               </h2>
               <h2 class="estimate">
                 <% if @user and @user.moderator? %>
-                <span id="estimate" class="label label-success" onclick="edit_value('estimate');"><%= @room.pretty_estimate %></span>
+                <span id="estimate" class="label label-success" onclick="edit_value('estimate');"><%= @room.estimate %></span>
                 <% else %>
-                <span id="estimate" class="label label-success"><%= @room.pretty_estimate %></span>
+                <span id="estimate" class="label label-success"><%= @room.estimate %></span>
                 <% end %>
               </h2>
               <table class="table table-striped">
